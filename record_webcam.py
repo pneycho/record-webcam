@@ -14,7 +14,9 @@ import wave
 import threading
 import time
 import os
+import argparse
 from moviepy.editor import VideoFileClip, AudioFileClip
+from tqdm import tqdm
 
 def record_video(duration, output_directory, end_time):
     """
@@ -35,7 +37,7 @@ def record_video(duration, output_directory, end_time):
     video_width = 640
     video_height = 480
     video_fps = 30
-    #This frame-rate is different because my webcam was not capturing at the fps=30 that it is advertising.
+    #This frame-rate is different because webcams don't always capture at the fps that it advertises.
     out_framerate = 14.3 
     
     
@@ -55,6 +57,7 @@ def record_video(duration, output_directory, end_time):
             if not ret:
                 break
             frames.append(frame)
+            pbar.update(1)
         return frames
 
     # Start recording video
@@ -63,7 +66,6 @@ def record_video(duration, output_directory, end_time):
     # Release video resources
     cap.release()
 
-    # Save video frames to AVI file
     video_output_filename = f"{output_directory}/just_video.avi"
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     # print(len(video_frames))
@@ -126,7 +128,7 @@ def record_audio(duration, output_directory, end_time):
 
 def combine_video_audio(video_path, audio_path, av_filepath, duration):
     """
-    This function combines a video and an audio file into a single audio-visual file.
+    This function muxes the video and audio file into a single audio-visual file.
 
     Args:
         video_path (str): The path to the video file.
@@ -154,6 +156,7 @@ def combine_video_audio(video_path, audio_path, av_filepath, duration):
     # Write the final clip to a new file
     final_clip.write_videofile(av_filepath, codec="libx264", audio_codec="aac")
 
+
 def start_recording(duration, output_directory):
     """
     Start recording a video and an audio in parallel, combine them, and save the results. Note that it saves the audio,
@@ -179,7 +182,6 @@ def start_recording(duration, output_directory):
     video_thread.start()
     audio_thread.start()
 
-
     # Wait for both threads to finish
     video_thread.join()
     audio_thread.join()
@@ -190,8 +192,15 @@ def start_recording(duration, output_directory):
 
     combine_video_audio(video_path, audio_path, combined_path, duration)
 
-if __name__ == "__main__":
-    duration_in_sec = 5 
-    output_directory = "/output/"
 
-    start_recording(duration_in_sec, output_directory)
+def parse_args():
+    parser = argparse.ArgumentParser(description="Record audio and video for a specified duration.")
+    parser.add_argument("duration", type=int, help="Duration of recording in seconds.")
+    parser.add_argument("output_dir",type = str, help="Directory to save the output files.")
+
+    args = parser.parse_args()
+    return args.duration, args.output_dir
+
+if __name__ == "__main__":
+    duration_in_sec, output_dir = parse_args()
+    start_recording(duration_in_sec, output_dir)
